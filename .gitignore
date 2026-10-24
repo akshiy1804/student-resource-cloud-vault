@@ -1,0 +1,24 @@
+# Python environments
+.venv/
+.venv-1/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Secrets and AWS credentials
+.env
+.env.*
+!.env.example
+.aws/
+credentials
+*.pem
+
+# IDE settings
+.vscode/
+.idea/
+
+# Generated files and local data
+*.zip
+.DS_Store
+instance/

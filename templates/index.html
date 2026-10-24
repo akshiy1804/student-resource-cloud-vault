@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Resource Cloud Vault</title>
+<meta name="description" content="Course notes and lab manuals, ready to download.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="skip" href="#results">Skip to resources</a>
+<header class="bar">
+  <span class="brand">Student Resource Vault</span>
+  <button id="open-share" class="ghost" type="button" hidden>Share a resource</button>
+</header>
+
+<section class="hero">
+  <h1>Find your notes in seconds.</h1>
+  <p class="lede">Course notes and lab manuals, ready to download.</p>
+  <label class="search">
+    <span class="sr">Search resources</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" type="search" placeholder="Try &ldquo;DBMS&rdquo; or &ldquo;lab manual&rdquo;" autocomplete="off">
+  </label>
+  <div id="cats" class="chips" role="group" aria-label="Filter by subject"></div>
+  <p id="demo-note" class="demo-note" hidden>Sample content for demonstration. These are not real files.</p>
+</section>
+
+<main>
+  <div id="banner" class="banner" role="alert" hidden>
+    <p><strong>We couldn&rsquo;t load the resources just now.</strong> Please try again in a moment.</p>
+    <details><summary>Technical details</summary><p id="banner-detail"></p></details>
+    <button id="retry" class="ghost" type="button">Try again</button>
+  </div>
+  <p id="count" class="count" aria-live="polite"></p>
+  <ul id="results" class="results" aria-busy="true"></ul>
+  <div id="empty" class="empty" hidden>
+    <p><strong>Nothing matched your search.</strong></p>
+    <p>Check the spelling, or look through every subject.</p>
+    <button id="clear" class="ghost" type="button">Show everything</button>
+  </div>
+</main>
+
+<dialog id="share" aria-labelledby="share-title">
+  <form id="upload-form" method="dialog">
+    <div class="dlg-head"><h2 id="share-title">Share a resource</h2>
+      <button type="button" id="close-share" class="x" aria-label="Close">&times;</button></div>
+    <p class="hint">Everyone subscribed to updates will get an email about it.</p>
+    <label class="field"><span>Title</span><input name="title" required maxlength="200" placeholder="e.g. Normalisation notes"></label>
+    <div class="two">
+      <label class="field"><span>Subject</span><input name="subject" maxlength="200" placeholder="e.g. DBMS"></label>
+      <label class="field"><span>Short description</span><input name="description" maxlength="500" placeholder="What&rsquo;s inside?"></label>
+    </div>
+    <label class="field"><span>File</span><input name="file" type="file" required></label>
+    <label class="field"><span>Access code</span><input name="token" type="password" required autocomplete="off" placeholder="Ask the person who runs this site"></label>
+    <input type="hidden" name="category" value="">
+    <button class="primary" type="submit">Share with everyone</button>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
