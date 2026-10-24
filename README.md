@@ -169,6 +169,3 @@ The hosted interface and AWS-backed operations depend on the deployment environm
 - Improve deployment monitoring and error reporting.
 - Optimize resource retrieval as the catalogue grows.
 
-## License
-
-Add a license file if you intend to distribute the project for reuse.
