@@ -1,120 +1,174 @@
 # Student Resource Cloud Vault
 
-Flask app for browsing, searching and downloading academic resources. Files are in **Amazon S3** (private bucket), metadata in **Amazon DynamoDB**, and **Amazon SNS** announces newly added resources. All AWS calls run on the backend; the browser never receives credentials.
+A cloud-based academic resource management application built using Flask and AWS. It allows students to browse, search, filter, and download academic resources, while integrating Amazon S3 for file storage, Amazon DynamoDB for resource metadata, and Amazon SNS for email notifications.
 
-## Status: what is and is not verified
-| Area | Status |
-|---|---|
-| Catalogue, search, filter, pagination, schema detection, S3 URI/URL parsing, presigned downloads, error mapping, uploads, upload validation, S3 cleanup, SNS publish/failure, token auth, demo vs live mode, templates/static routes, inspect script | **Mock-tested** (moto, 59 tests: `pytest -q`) |
-| Server starts and degrades cleanly with no AWS access (waitress and Flask) | **Verified** on Linux |
-| Your real table attributes, real S3 keys, role permissions, real SNS email delivery | **Not yet verified.** Run `python scripts/inspect_aws.py` with fresh lab credentials |
-| Windows PowerShell run steps and `scripts/set-credentials.ps1` | **Not executed by the author** (no Windows/PowerShell available); written to standard PowerShell syntax |
-| Hosted deployment | **Not done**, documented only |
+## Features
+
+- Browse academic resources through a centralized catalogue.
+- Search and filter resources by subject.
+- Download available PDF resources.
+- Share academic resources through the web interface.
+- Store resource files in Amazon S3.
+- Manage resource metadata using Amazon DynamoDB.
+- Send resource-sharing notifications using Amazon SNS.
+- Access the application through a Flask-based web interface.
+
+## Tech Stack
+
+- **Backend:** Python, Flask
+- **AWS SDK:** Boto3
+- **Storage:** Amazon S3
+- **Database:** Amazon DynamoDB
+- **Notifications:** Amazon SNS
+- **Frontend:** HTML, CSS, JavaScript
+- **Version Control:** Git and GitHub
 
 ## Architecture
-```mermaid
-flowchart LR
-    B[Browser] -->|/api/*| F[Flask + Boto3]
-    F -->|Scan / PutItem| D[(DynamoDB StudentResources)]
-    F -->|HeadObject / presign / put / delete| S[(S3 private bucket)]
-    F -->|Publish| N[SNS StudentResourceVaultNotifications]
-    N --> E[Email subscribers]
-    F -. short-lived presigned URL .-> B
-    B -->|download directly| S
+
+The application follows a backend-driven architecture. The browser communicates with the Flask application, which interacts with AWS services using Boto3.
+
+- **Amazon S3:** Stores academic resource files.
+- **Amazon DynamoDB:** Stores resource details and metadata.
+- **Amazon SNS:** Publishes notifications to subscribed email addresses.
+- **Flask:** Handles application routes, resource retrieval, and download requests.
+
+## Prerequisites
+
+Before running the project, ensure you have:
+
+- Python 3.10 or a compatible version.
+- pip installed.
+- An AWS account or access to a configured AWS lab environment.
+- An existing S3 bucket, DynamoDB table, and SNS topic.
+- AWS credentials with the required permissions.
+
+## Installation and Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/akshiy1804/student-resource-cloud-vault.git
+cd student-resource-cloud-vault
 ```
 
-How a record becomes a file (first match wins): an S3-key attribute (`S3Key`, `key`, `s3_uri`, ...) holding `s3://bucket/key`, an S3 https URL, or a plain key; else a filename attribute holding a path; else `Folder` + `FileName` -> `Folder/FileName`; else `S3_KEY_PREFIX` + `FileName`. The last two are conventions, not facts: the download endpoint always `HeadObject`s the key first and returns 404 if it does not exist. `inspect_aws.py` shows exactly which key each record resolves to. If the record names a different bucket than `S3_BUCKET`, the download is refused (409).
+### 2. Create a virtual environment
 
-## Windows PowerShell: install and run
+**Windows PowerShell**
+
 ```powershell
-cd student-resource-vault
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope Process Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux/macOS**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
-Copy-Item .env.example .env           # edit .env: set S3_BUCKET (non-secret settings only)
-
-# Fresh AWS Academy credentials, in THIS SAME window (Flask failed earlier because they were set in another one):
-$env:AWS_ACCESS_KEY_ID="..."; $env:AWS_SECRET_ACCESS_KEY="..."; $env:AWS_SESSION_TOKEN="..."; $env:AWS_REGION="us-east-1"
-#   or copy the "AWS CLI" block from AWS Details, then run: .\scripts\set-credentials.ps1
-
-python scripts/inspect_aws.py         # read-only; shows real schema, bucket keys, SNS subscription status
-python app.py                         # http://127.0.0.1:5000   (or: python serve.py  -> port 8000, waitress)
 ```
-Credentials expire with the lab session: re-set them and restart the app.
 
-## Environment variables (names used by the code)
-| Variable | Purpose | Default |
+If the repository includes a `.env.example` file, copy it to `.env` and configure the required non-secret application settings.
+
+### 4. Configure AWS
+
+Set the AWS region and the names of your existing AWS resources using the environment variable names supported by the application.
+
+Example for Windows PowerShell:
+
+```powershell
+$env:AWS_REGION="us-east-1"
+$env:DDB_TABLE="StudentResources"
+$env:S3_BUCKET="your-s3-bucket-name"
+$env:SNS_TOPIC_NAME="StudentResourceVaultNotifications"
+```
+
+Configure AWS credentials through your AWS environment or temporary lab credentials:
+
+```powershell
+$env:AWS_ACCESS_KEY_ID="your-access-key"
+$env:AWS_SECRET_ACCESS_KEY="your-secret-key"
+$env:AWS_SESSION_TOKEN="your-session-token"
+```
+
+Use the session token when required by temporary AWS credentials. Never commit credentials or secret values to GitHub.
+
+Ensure the configured identity has the necessary permissions to access DynamoDB, S3, and SNS.
+
+### 5. Run the application
+
+```bash
+python app.py
+```
+
+Open the local URL displayed by Flask, usually:
+
+```text
+http://127.0.0.1:5000
+```
+
+If the repository provides a separate production-style server script, use its documented command and port instead.
+
+## AWS Resource Configuration
+
+| AWS Service | Resource | Purpose |
 |---|---|---|
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | credentials, shell only, never in files | none |
-| `AWS_REGION` | region | `us-east-1` |
-| `DDB_TABLE` | table | `StudentResources` |
-| `S3_BUCKET` | existing bucket (**required for downloads**) | none |
-| `S3_KEY_PREFIX` | prefix for filename-only records and new uploads | empty |
-| `SNS_TOPIC_NAME` / `SNS_TOPIC_ARN` | existing topic (ARN skips discovery) | `StudentResourceVaultNotifications` |
-| `PRESIGN_SECONDS` | download link lifetime, 30-3600 | `300` |
-| `FIELD_ID`, `FIELD_TITLE`, `FIELD_SUBJECT`, `FIELD_CATEGORY`, `FIELD_DESCRIPTION`, `FIELD_FILENAME`, `FIELD_S3_KEY` | pin attribute names if auto-detection is wrong | auto |
-| `ADMIN_TOKEN` | enables uploads (long random string); unset = uploads off | unset |
-| `DEMO_MODE=1` | explicitly labelled sample data, downloads and uploads disabled | `0` |
-| `HOST`, `PORT` | for `serve.py` / `app.py` | `127.0.0.1`, `8000` / `5000` |
+| Amazon DynamoDB | `StudentResources` | Stores academic resource metadata. |
+| Amazon S3 | Configured S3 bucket | Stores resource files. |
+| Amazon SNS | `StudentResourceVaultNotifications` | Publishes notifications about shared resources. |
 
-SNS discovery order: `SNS_TOPIC_ARN`; else `ListTopics` by name; else, if `ListTopics` is denied, the ARN is built from your account id (STS). Nothing is ever created.
+The application expects these AWS resources to exist and be configured correctly. Resource names, table attributes, bucket keys, and permissions must match the actual AWS environment.
 
-## Uploads (off unless `ADMIN_TOKEN` is set)
-`POST /api/resources` with header `X-Admin-Token`. Validated: token, extension allow-list, declared content type, file magic bytes, non-empty, size (25 MB), metadata length. Flow: S3 put (key `<prefix><8 hex>-<safe name>`) -> DynamoDB put -> SNS publish. If the DynamoDB write fails, the new S3 object is deleted; if that delete also fails the error says so. The response states `published` only when SNS accepted the message (that is not proof of email delivery) and `failed` otherwise. Uploads need a table with a **string** partition key and no sort key; otherwise they are refused (501) before anything is written. New items use the table's existing attribute names and its existing key style (plain key vs `s3://` URI).
+## Application Usage
 
-## IAM permissions
-Read-only catalogue and downloads:
-```json
-{"Version":"2012-10-17","Statement":[
- {"Effect":"Allow","Action":["dynamodb:Scan","dynamodb:DescribeTable"],"Resource":"arn:aws:dynamodb:us-east-1:<ACCOUNT>:table/StudentResources"},
- {"Effect":"Allow","Action":"s3:GetObject","Resource":"arn:aws:s3:::<BUCKET>/*"},
- {"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::<BUCKET>"}]}
-```
-(`ListBucket` lets a missing file return 404 instead of 403.) Add for uploads: `dynamodb:PutItem` on the table, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::<BUCKET>/*`, `sns:Publish` on the topic ARN. Optional: `sts:GetCallerIdentity` and `sns:ListTopics` (not needed if `SNS_TOPIC_ARN` is set).
+1. Open the application in a browser.
+2. Browse the available academic resources.
+3. Use the search and subject filters to locate relevant materials.
+4. Select an available resource to download its file.
+5. Use the resource-sharing interface to submit a resource where sharing is enabled.
+6. Check the subscribed email inbox for SNS notifications when a notification is successfully published and delivered.
 
-## Testing
-```powershell
-pip install -r requirements-dev.txt
-pytest -q                                      # mocked AWS, no credentials needed
-python scripts/inspect_aws.py                  # real AWS, read-only
-python scripts/inspect_aws.py --publish-test   # ONLY if you want one real email sent
-curl.exe http://127.0.0.1:5000/health          # use curl.exe: plain `curl` is an alias in PowerShell
-curl.exe "http://127.0.0.1:5000/health?deep=1" # checks DynamoDB, S3, SNS
-```
-Routes: `/`, `/health`, `/api/config`, `/api/resources?q=&category=` (GET list, POST add), `/api/resource?id=`, `/api/download?id=`. IDs are passed as `?id=` so original IDs containing `/` or `#` work unchanged.
+## Security
 
-## GitHub (run from the project root)
-Replace `YOUR_GITHUB_REPOSITORY_URL` with your own empty repository's URL, and **read the `git status` output before committing**: `.env`, `.venv`, caches and `*.zip` must not appear.
-```powershell
-git init
-git add .
-git status
-git commit -m "Build Student Resource Cloud Vault"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPOSITORY_URL
-git push -u origin main
-```
+- Keep AWS credentials out of source code and version control.
+- Use least-privilege IAM permissions.
+- Keep the S3 bucket private where appropriate.
+- Validate uploaded files and restrict resource-sharing operations to authorized users.
+- Use HTTPS and secure environment-variable management for hosted deployments.
 
-## Deployment and limits
-- **Demo from your laptop** is the dependable route. `python serve.py` is a production-style server that works on Windows.
-- AWS Academy credentials are temporary and tied to the lab session. Do not paste them into a hosting service. A permanent public site cannot rely on them.
-- On EC2 inside the lab (may consume lab credit), attach the lab instance profile so Boto3 gets role credentials, then run `gunicorn -w 2 -b 0.0.0.0:8000 "app:create_app()"`. It stops working when the lab ends.
-- Permanent hosting needs a normal AWS account, a dedicated least-privilege IAM identity (prefer a role over long-lived keys), HTTPS, and a host's secret store. A `Procfile` is included for Procfile-based hosts. Check current pricing before choosing a host.
-- `Scan` reads the whole table (fine for hundreds of items). There are no user accounts; uploads use one shared token. Presigned URLs die when the credentials that signed them expire.
+## Testing and Troubleshooting
 
-## Data notes (from the live inspection of this project's table)
-Records have `ResourceID`, `FileName`, `Folder`, `Subject`, `Description` (no title or category attribute). The app shows the filename without extension as the title and uses Subject for the category chips. The `FileName` values must match the real S3 object names exactly, including spaces and capitals; the app never guesses a similar file.
+Verify that the AWS credentials are valid and that the configured resources exist before testing cloud operations.
 
-## Repairing mismatched FileName values (optional, one-time)
-`python scripts/fix_filenames.py` is a dry run. `python scripts/fix_filenames.py --apply` updates a record's filename attribute only when its folder holds exactly one file; ambiguous folders are skipped. Needs `dynamodb:UpdateItem`.
+Common issues include:
 
-## Troubleshooting
-| Symptom | Cause / fix |
-|---|---|
-| `no_credentials` / "credentials are not configured" | Variables set in a different terminal. Set them in the window that runs the app. |
-| `credentials_expired` (401) | Lab session rotated. Re-set credentials, restart. |
-| `access_denied` (403) | Role lacks an action from the IAM list. |
-| `object_missing` (404) | Record resolves to a key that is not in the bucket. Compare with `inspect_aws.py` output; set `FIELD_S3_KEY` or `S3_KEY_PREFIX`. |
-| `bucket_mismatch` (409) | Record names a bucket other than `S3_BUCKET`. |
-| `malformed_s3_reference` (422) | The record's key/URI is not valid (e.g. `s3://bucket` with no key). Fix the record. |
-| Notification `failed` | Topic not found, no `sns:Publish`, or credentials expired. |
+- **AWS authentication errors:** Check credential validity, session expiry, and region settings.
+- **Access denied:** Verify IAM permissions for the required AWS services.
+- **Resource not found:** Confirm that DynamoDB metadata matches the actual S3 object key.
+- **Notification failure:** Check the SNS topic configuration, publish permissions, and email subscription status.
+- **Download failure:** Confirm that the object exists in the configured bucket and that the application has permission to access it.
+
+## Repository and Deployment
+
+**GitHub:** https://github.com/akshiy1804/student-resource-cloud-vault
+
+**Web interface:** https://student-resource-cloud-vault.onrender.com/
+
+The hosted interface and AWS-backed operations depend on the deployment environment and its AWS configuration. AWS lab credentials may expire, so a persistent deployment should use an appropriate, securely managed AWS identity.
+
+## Future Improvements
+
+- Add student authentication and role-based access control.
+- Improve upload validation and resource management.
+- Add audit logging and automated tests.
+- Improve deployment monitoring and error reporting.
+- Optimize resource retrieval as the catalogue grows.
+
+## License
+
+Add a license file if you intend to distribute the project for reuse.
